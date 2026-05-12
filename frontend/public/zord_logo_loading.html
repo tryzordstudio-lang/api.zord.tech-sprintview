@@ -1,0 +1,51 @@
+<style>
+  .scene {
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #060D24;
+    border-radius: 20px;
+  }
+
+  .z-bg1 { animation: fadeIn 0.4s 0s both; }
+  .z-bg2 { animation: fadeIn 0.4s 0.1s both; }
+  .z-p1  { animation: slideIn 0.4s cubic-bezier(0.4,0,0.2,1) 0.3s both; }
+  .z-p2  { animation: slideIn 0.4s cubic-bezier(0.4,0,0.2,1) 0.52s both; }
+  .z-p3  { animation: slideIn 0.4s cubic-bezier(0.4,0,0.2,1) 0.74s both; }
+  .z-p4  { animation: slideIn 0.4s cubic-bezier(0.4,0,0.2,1) 0.94s both, shimmer 2.4s ease-in-out 1.6s infinite; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes shimmer {
+    0%, 100% { opacity: 0.78; }
+    50%       { opacity: 0.2; }
+  }
+
+  .icon svg {
+    animation: breathe 3s ease-in-out 1.6s infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.06); }
+  }
+</style>
+
+<div class="scene">
+  <div class="icon">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" width="180" height="180">
+      <rect class="z-bg1" x="2" y="2" width="44" height="44" rx="14" fill="#2453E6"/>
+      <rect class="z-bg2" x="2" y="2" width="44" height="44" rx="14" fill="#5B6CF0" fill-opacity="0.16"/>
+      <path class="z-p1" d="M13 14H35V19H20.2L13 14Z" fill="#FFFFFF"/>
+      <path class="z-p2" d="M24.6 19H35L23.6 29H13.2L24.6 19Z" fill="#DCE7FF"/>
+      <path class="z-p3" d="M13 29H35V34H13V29Z" fill="#FFFFFF" fill-opacity="0.96"/>
+      <path class="z-p4" d="M31.4 14H35V17.6L17 34H12.6V30.7L31.4 14Z" fill="#9DBBFF" fill-opacity="0.78"/>
+    </svg>
+  </div>
+</div>

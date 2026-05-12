@@ -1,0 +1,55 @@
+<style>
+  .wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+  }
+  .sv-icon { width: 220px; height: 220px; }
+  .bar-top  { animation: slideIn 0.5s cubic-bezier(0.4,0,0.2,1) 0.1s both; }
+  .bar-step { animation: slideIn 0.5s cubic-bezier(0.4,0,0.2,1) 0.2s both; }
+  .bar-mid  { animation: slideIn 0.5s cubic-bezier(0.4,0,0.2,1) 0.32s both; }
+  .bar-gloss{ animation: slideIn 0.5s cubic-bezier(0.4,0,0.2,1) 0.44s both; }
+  .bar-bot  { animation: slideIn 0.5s cubic-bezier(0.4,0,0.2,1) 0.56s both; }
+  @keyframes slideIn {
+    from { opacity:0; transform:translateX(-16px); }
+    to   { opacity:1; transform:translateX(0); }
+  }
+  .sv-icon svg { animation: pulse 3s ease-in-out 1s infinite; }
+  @keyframes pulse {
+    0%,100% { transform:scale(1); }
+    50%      { transform:scale(1.04); }
+  }
+  .shimmer { animation: shimmer 2.5s ease-in-out 1.2s infinite; }
+  @keyframes shimmer {
+    0%,100% { opacity:0.78; }
+    50%      { opacity:0.35; }
+  }
+</style>
+
+<div class="wrap">
+  <div class="sv-icon">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" fill="none">
+      <rect x="6" y="10" width="288" height="288" rx="84" fill="#1236B0" fill-opacity="0.3"/>
+      <rect width="300" height="300" rx="88" fill="#2453E6"/>
+      <rect width="300" height="300" rx="88" fill="#5B6CF0" fill-opacity="0.16"/>
+
+      <g class="bar-top">
+        <path d="M52,80 H248 V117 H70 Z" fill="#FFFFFF"/>
+      </g>
+      <g class="bar-step">
+        <path d="M190,80 H248 V58 H216 V80 Z" fill="#FFFFFF"/>
+        <path d="M216,58 H248 V80 H216 Z" fill="#DCE7FF"/>
+      </g>
+      <g class="bar-mid">
+        <path d="M52,126 H202 L184,163 H52 Z" fill="#DCE7FF"/>
+      </g>
+      <g class="bar-gloss shimmer">
+        <path d="M158,126 H202 L184,163 H140 Z" fill="#9DBBFF" fill-opacity="0.78"/>
+      </g>
+      <g class="bar-bot">
+        <path d="M52,172 H248 V209 H52 Z" fill="#FFFFFF" fill-opacity="0.96"/>
+      </g>
+    </svg>
+  </div>
+</div>

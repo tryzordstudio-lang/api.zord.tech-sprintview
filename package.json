@@ -1,0 +1,37 @@
+{
+  "name": "sprintview-backend",
+  "version": "1.0.0",
+  "description": "SprintView MVP Pro backend",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "check": "node --check src/server.js && node --check src/app.js",
+    "seed:demo": "node scripts/seed-demo-account.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "bcrypt": "^5.1.1",
+    "bullmq": "^5.52.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "ioredis": "^5.4.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.10.1",
+    "pdf-lib": "^1.17.1",
+    "pino": "^9.6.0",
+    "pino-http": "^10.4.0",
+    "puppeteer": "^24.8.2",
+    "puppeteer-core": "^24.43.1",
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^11.1.0",
+    "zod": "^3.24.2"
+  }
+}
