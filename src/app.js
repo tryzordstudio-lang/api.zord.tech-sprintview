@@ -5,6 +5,7 @@ const path = require("path");
 const swaggerUi = require("swagger-ui-express");
 const { env } = require("./config/env");
 const { logger } = require("./config/logger");
+const { startupState } = require("./config/runtime-state");
 const { buildOpenApiSpec } = require("./config/swagger");
 const { errorHandler } = require("./middleware/error-handler");
 const { notFoundHandler } = require("./middleware/not-found");
@@ -44,6 +45,7 @@ function createApp() {
     res.json({
       name: "Zord SprintView Backend",
       version: "1.0.0",
+      status: startupState.getState().status,
       docs: "/docs",
       api: "/api/v1"
     });
