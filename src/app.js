@@ -38,7 +38,7 @@ function getAppBasePath() {
 function createApp() {
   const app = express();
   const basePath = getAppBasePath();
-  const routePrefixes = Array.from(new Set(["", basePath].filter(Boolean)));
+  const routePrefixes = Array.from(new Set(["", "/sprintview", basePath].filter(Boolean)));
 
   app.set("trust proxy", env.trustProxy);
   app.use(
