@@ -2,7 +2,15 @@ const mongoose = require("mongoose");
 const { env } = require("./env");
 const { logger } = require("./logger");
 
+function hasValidMongoScheme(value) {
+  return /^mongodb(\+srv)?:\/\//i.test(String(value || "").trim());
+}
+
 function buildMongoUri() {
+  if (hasValidMongoScheme(env.mongodbUri)) {
+    return env.mongodbUri;
+  }
+
   if (env.mongodbHost) {
     const scheme = env.mongodbScheme === "mongodb+srv" ? "mongodb+srv" : "mongodb";
     const databaseName = env.mongodbDatabase || "sprintview";
@@ -33,9 +41,13 @@ async function connectDatabase() {
   }
 
   mongoose.set("strictQuery", true);
-  await mongoose.connect(mongodbUri);
+  await mongoose.connect(mongodbUri, {
+    serverSelectionTimeoutMS: 5000
+  });
+  await mongoose.connection.db.admin().command({ ping: 1 });
   logger.info(
     {
+      databaseUriSource: hasValidMongoScheme(env.mongodbUri) ? "uri" : env.mongodbHost ? "split-env" : "none",
       databaseHost: env.mongodbHost || "from-mongodb-uri",
       databaseName: env.mongodbDatabase || "sprintview"
     },

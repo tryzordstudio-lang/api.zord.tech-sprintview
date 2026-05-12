@@ -8,6 +8,14 @@ const { registerWorkers } = require("./workers/register-workers");
 
 const STARTUP_RETRY_MS = 5000;
 
+process.on("uncaughtException", (error) => {
+  logger.error({ err: error }, "Uncaught exception");
+});
+
+process.on("unhandledRejection", (error) => {
+  logger.error({ err: error }, "Unhandled promise rejection");
+});
+
 async function initializeServices() {
   try {
     if (!startupState.getState().databaseReady) {
