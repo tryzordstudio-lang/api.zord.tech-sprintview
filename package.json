@@ -28,7 +28,6 @@
     "pdf-lib": "^1.17.1",
     "pino": "^9.6.0",
     "pino-http": "^10.4.0",
-    "puppeteer": "^24.8.2",
     "puppeteer-core": "^24.43.1",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^11.1.0",

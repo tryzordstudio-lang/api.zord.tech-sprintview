@@ -843,7 +843,7 @@ class PdfService {
   }
 
   async generateWithPuppeteer(html, reportData) {
-    const puppeteer = require("puppeteer");
+    const puppeteer = require("puppeteer-core");
     const browser = await puppeteer.launch({
       headless: true,
       executablePath: this.resolvePuppeteerExecutablePath(),
