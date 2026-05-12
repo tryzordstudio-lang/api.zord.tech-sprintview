@@ -3,29 +3,26 @@ const { env } = require("./env");
 const { logger } = require("./logger");
 
 function buildMongoUri() {
-  if (env.mongodbUri) {
-    return env.mongodbUri;
+  if (env.mongodbHost) {
+    const scheme = env.mongodbScheme === "mongodb+srv" ? "mongodb+srv" : "mongodb";
+    const databaseName = env.mongodbDatabase || "sprintview";
+    const credentials =
+      env.mongodbUsername && env.mongodbPassword
+        ? `${encodeURIComponent(env.mongodbUsername)}:${encodeURIComponent(env.mongodbPassword)}@`
+        : "";
+    const hostPort =
+      scheme === "mongodb+srv" ? env.mongodbHost : `${env.mongodbHost}:${env.mongodbPort}`;
+    const query = new URLSearchParams();
+
+    if (env.mongodbAuthSource) {
+      query.set("authSource", env.mongodbAuthSource);
+    }
+
+    const queryString = query.toString();
+    return `${scheme}://${credentials}${hostPort}/${databaseName}${queryString ? `?${queryString}` : ""}`;
   }
 
-  if (!env.mongodbHost) {
-    return "";
-  }
-
-  const scheme = env.mongodbScheme === "mongodb+srv" ? "mongodb+srv" : "mongodb";
-  const databaseName = env.mongodbDatabase || "sprintview";
-  const credentials =
-    env.mongodbUsername && env.mongodbPassword
-      ? `${encodeURIComponent(env.mongodbUsername)}:${encodeURIComponent(env.mongodbPassword)}@`
-      : "";
-  const hostPort = scheme === "mongodb+srv" ? env.mongodbHost : `${env.mongodbHost}:${env.mongodbPort}`;
-  const query = new URLSearchParams();
-
-  if (env.mongodbAuthSource) {
-    query.set("authSource", env.mongodbAuthSource);
-  }
-
-  const queryString = query.toString();
-  return `${scheme}://${credentials}${hostPort}/${databaseName}${queryString ? `?${queryString}` : ""}`;
+  return env.mongodbUri;
 }
 
 async function connectDatabase() {
@@ -37,7 +34,13 @@ async function connectDatabase() {
 
   mongoose.set("strictQuery", true);
   await mongoose.connect(mongodbUri);
-  logger.info("MongoDB connected");
+  logger.info(
+    {
+      databaseHost: env.mongodbHost || "from-mongodb-uri",
+      databaseName: env.mongodbDatabase || "sprintview"
+    },
+    "MongoDB connected"
+  );
 }
 
-module.exports = { connectDatabase };
+module.exports = { connectDatabase, buildMongoUri };
