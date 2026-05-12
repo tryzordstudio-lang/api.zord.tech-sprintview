@@ -19,8 +19,26 @@ try {
   pinoHttp = null;
 }
 
+function normalizeBasePath(value) {
+  if (!value || value === "/") {
+    return "";
+  }
+
+  return `/${String(value).replace(/^\/+|\/+$/g, "")}`;
+}
+
+function getAppBasePath() {
+  try {
+    return normalizeBasePath(new URL(env.appUrl).pathname);
+  } catch (_error) {
+    return "";
+  }
+}
+
 function createApp() {
   const app = express();
+  const basePath = getAppBasePath();
+  const routePrefixes = Array.from(new Set(["", basePath].filter(Boolean)));
 
   app.use(
     cors({
@@ -41,19 +59,34 @@ function createApp() {
   }
   app.use(apiRateLimit);
 
-  app.get("/", (_req, res) => {
-    res.json({
-      name: "Zord SprintView Backend",
-      version: "1.0.0",
-      status: startupState.getState().status,
-      docs: "/docs",
-      api: "/api/v1"
+  ["/", ...routePrefixes].forEach((prefix) => {
+    const docsPath = `${prefix}/docs`.replace(/\/{2,}/g, "/");
+    const apiPath = `${prefix}/api/v1`.replace(/\/{2,}/g, "/");
+
+    app.get(prefix || "/", (_req, res) => {
+      res.json({
+        name: "Zord SprintView Backend",
+        version: "1.0.0",
+        status: startupState.getState().status,
+        docs: docsPath,
+        api: apiPath
+      });
     });
   });
 
-  app.use("/generated", express.static(path.join(process.cwd(), "generated")));
-  app.use("/docs", swaggerUi.serve, swaggerUi.setup(buildOpenApiSpec()));
-  app.use("/api/v1", apiRouter);
+  const generatedMiddleware = express.static(path.join(process.cwd(), "generated"));
+  const docsMiddleware = [swaggerUi.serve, swaggerUi.setup(buildOpenApiSpec())];
+
+  ["/", ...routePrefixes].forEach((prefix) => {
+    const generatedPath = `${prefix}/generated`.replace(/\/{2,}/g, "/");
+    const docsPath = `${prefix}/docs`.replace(/\/{2,}/g, "/");
+    const apiPath = `${prefix}/api/v1`.replace(/\/{2,}/g, "/");
+
+    app.use(generatedPath, generatedMiddleware);
+    app.use(docsPath, ...docsMiddleware);
+    app.use(apiPath, apiRouter);
+  });
+
   app.use(notFoundHandler);
   app.use(errorHandler);
 
