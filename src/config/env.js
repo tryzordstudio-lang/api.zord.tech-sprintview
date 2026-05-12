@@ -59,7 +59,7 @@ const env = {
   port: parseNumber(process.env.PORT, 4000),
   appUrl: cleanEnvValue(process.env.APP_URL, "http://localhost:4000"),
   frontendUrl: cleanEnvValue(process.env.FRONTEND_URL, "http://localhost:3000"),
-  mongodbUri: cleanEnvValue(process.env.MONGODB_URI),
+  mongodbUri: cleanEnvValue(process.env.MONGODB_URI || process.env.MONGO_URI),
   mongodbScheme: cleanEnvValue(process.env.MONGODB_SCHEME, "mongodb"),
   mongodbHost: cleanEnvValue(process.env.MONGODB_HOST),
   mongodbPort: parseNumber(process.env.MONGODB_PORT, 27017),
