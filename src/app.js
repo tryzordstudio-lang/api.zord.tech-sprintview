@@ -40,6 +40,7 @@ function createApp() {
   const basePath = getAppBasePath();
   const routePrefixes = Array.from(new Set(["", basePath].filter(Boolean)));
 
+  app.set("trust proxy", env.trustProxy);
   app.use(
     cors({
       origin: env.frontendUrl,

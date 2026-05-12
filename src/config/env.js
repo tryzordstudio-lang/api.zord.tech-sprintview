@@ -2,6 +2,25 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 
+function parseTrustProxy(value) {
+  if (value === undefined || value === null || value === "") {
+    return process.env.NODE_ENV === "production" ? 1 : false;
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+
+  if (normalized === "true") {
+    return true;
+  }
+
+  if (normalized === "false") {
+    return false;
+  }
+
+  const numeric = Number(normalized);
+  return Number.isNaN(numeric) ? normalized : numeric;
+}
+
 const env = {
   nodeEnv: process.env.NODE_ENV || "development",
   isProduction: process.env.NODE_ENV === "production",
@@ -33,7 +52,8 @@ const env = {
   geminiModel: process.env.GEMINI_MODEL || "gemini-1.5-flash",
   redisUrl: process.env.REDIS_URL || "",
   runInlineJobs: String(process.env.RUN_INLINE_JOBS || "true") === "true",
-  puppeteerExecutablePath: process.env.PUPPETEER_EXECUTABLE_PATH || ""
+  puppeteerExecutablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "",
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY)
 };
 
 module.exports = { env };
