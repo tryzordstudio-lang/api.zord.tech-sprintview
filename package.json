@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "bcrypt": "^5.1.1",
     "bullmq": "^5.52.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
