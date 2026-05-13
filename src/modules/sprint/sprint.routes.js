@@ -1,5 +1,5 @@
 const express = require("express");
-const { deleteSprint, getSprint, importSprint, listSprints, retryAi, updateSprint } = require("./sprint.controller");
+const { analyzeSprint, deleteSprint, getSprint, importSprint, listSprints, retryAi, updateSprint } = require("./sprint.controller");
 const { verifyJWT } = require("../../middleware/verify-jwt");
 const { asyncHandler } = require("../../utils/async-handler");
 const { validate } = require("../../utils/validate");
@@ -17,6 +17,7 @@ router.post("/import", validate(manualImportSprintSchema), asyncHandler(importSp
 router.get("/:id", asyncHandler(getSprint));
 router.patch("/:id", validate(updateSprintSchema), asyncHandler(updateSprint));
 router.delete("/:id/delete", asyncHandler(deleteSprint));
+router.post("/:id/analyze", asyncHandler(analyzeSprint));
 router.post("/:id/retry-ai", asyncHandler(retryAi));
 
 module.exports = { sprintRouter: router };

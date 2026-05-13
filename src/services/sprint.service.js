@@ -88,7 +88,7 @@ class SprintService {
     };
   }
 
-  async importManualSprint({ workspaceId, userId, payload }) {
+  async importManualSprint({ workspaceId, userId, payload, autoAnalyze = false }) {
     const project = await this.resolveProject({
       workspaceId,
       userId,
@@ -110,7 +110,7 @@ class SprintService {
             end: payload.dateRange.end ? new Date(payload.dateRange.end) : undefined
           }
         : undefined,
-      status: "processing",
+      status: autoAnalyze ? "processing" : "imported",
       shareToken: randomToken(16),
       createdBy: userId
     });
@@ -138,16 +138,18 @@ class SprintService {
     sprint.deliveryRisk = this.computeRisk(metrics);
     await sprint.save();
 
-    await reportService.ensureReport({
-      workspaceId,
-      sprintId: sprint._id,
-      shareToken: sprint.shareToken
-    });
+    if (autoAnalyze) {
+      await reportService.ensureReport({
+        workspaceId,
+        sprintId: sprint._id,
+        shareToken: sprint.shareToken
+      });
 
-    await queueService.enqueue(JOB_NAMES.GENERATE_INTELLIGENCE, {
-      sprintId: sprint._id.toString(),
-      workspaceId
-    });
+      await queueService.enqueue(JOB_NAMES.GENERATE_INTELLIGENCE, {
+        sprintId: sprint._id.toString(),
+        workspaceId
+      });
+    }
 
     return this.getSprintById({ sprintId: sprint._id, workspaceId });
   }
@@ -188,7 +190,7 @@ class SprintService {
       }))
     };
 
-    const sprint = await this.importManualSprint({ workspaceId, userId, payload });
+    const sprint = await this.importManualSprint({ workspaceId, userId, payload, autoAnalyze: false });
     await Sprint.findByIdAndUpdate(sprint.sprint._id, {
       jiraSprintId: String(sprintId),
       jiraSprintName: sprintItem.name
@@ -249,7 +251,22 @@ class SprintService {
   }
 
   async retryAi({ sprintId, workspaceId }) {
-    await Sprint.findOneAndUpdate({ _id: sprintId, workspaceId }, { status: "processing" });
+    const sprint = await Sprint.findOneAndUpdate(
+      { _id: sprintId, workspaceId },
+      { status: "processing" },
+      { new: true }
+    );
+
+    if (!sprint) {
+      throw new ApiError(404, "SPRINT_NOT_FOUND", "Sprint not found");
+    }
+
+    await reportService.ensureReport({
+      workspaceId,
+      sprintId: sprint._id,
+      shareToken: sprint.shareToken
+    });
+
     await queueService.enqueue(JOB_NAMES.GENERATE_INTELLIGENCE, {
       sprintId,
       workspaceId

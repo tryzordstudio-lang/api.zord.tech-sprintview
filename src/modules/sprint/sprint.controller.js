@@ -47,6 +47,15 @@ async function retryAi(req, res) {
   res.json(successResponse(result, "AI regeneration queued"));
 }
 
+async function analyzeSprint(req, res) {
+  const result = await sprintService.retryAi({
+    sprintId: req.params.id,
+    workspaceId: req.user.workspaceId
+  });
+
+  res.json(successResponse(result, "Sprint analysis queued"));
+}
+
 async function updateSprint(req, res) {
   const result = await sprintService.updateSprint({
     sprintId: req.params.id,
@@ -57,4 +66,4 @@ async function updateSprint(req, res) {
   res.json(successResponse(result, "Sprint updated"));
 }
 
-module.exports = { listSprints, importSprint, getSprint, deleteSprint, retryAi, updateSprint };
+module.exports = { listSprints, importSprint, getSprint, deleteSprint, retryAi, analyzeSprint, updateSprint };

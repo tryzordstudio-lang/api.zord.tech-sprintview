@@ -35,6 +35,21 @@ function getAppBasePath() {
   }
 }
 
+function buildAllowedOrigins() {
+  return Array.from(
+    new Set(
+      [
+        env.frontendUrl,
+        ...env.frontendUrls,
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001"
+      ].filter(Boolean)
+    )
+  );
+}
+
 function createApp() {
   const app = express();
   const basePath = getAppBasePath();
@@ -52,8 +67,15 @@ function createApp() {
       )
     )
   );
+  const allowedOrigins = buildAllowedOrigins();
   const corsOptions = {
-    origin: env.frontendUrl,
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`Origin ${origin} is not allowed by CORS`));
+    },
     credentials: true
   };
 

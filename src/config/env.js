@@ -1,6 +1,27 @@
+const fs = require("fs");
+const path = require("path");
 const dotenv = require("dotenv");
 
-dotenv.config();
+function loadEnvFiles() {
+  const rootDir = process.cwd();
+  const nodeEnv = String(process.env.NODE_ENV || "development").trim() || "development";
+  const candidatePaths = [
+    path.join(rootDir, `.env.${nodeEnv}.local`),
+    path.join(rootDir, `.env.${nodeEnv}`),
+    path.join(rootDir, ".env.local"),
+    path.join(rootDir, ".env")
+  ];
+
+  for (const envPath of candidatePaths) {
+    if (!fs.existsSync(envPath)) {
+      continue;
+    }
+
+    dotenv.config({ path: envPath, override: false });
+  }
+}
+
+loadEnvFiles();
 
 function cleanEnvValue(value, fallback = "") {
   if (value === undefined || value === null) {
@@ -32,6 +53,18 @@ function parseNumber(value, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function parseList(value) {
+  const cleaned = cleanEnvValue(value);
+  if (!cleaned) {
+    return [];
+  }
+
+  return cleaned
+    .split(",")
+    .map((item) => cleanEnvValue(item))
+    .filter(Boolean);
+}
+
 function parseTrustProxy(value) {
   const cleaned = cleanEnvValue(value);
 
@@ -59,6 +92,7 @@ const env = {
   port: parseNumber(process.env.PORT, 4000),
   appUrl: cleanEnvValue(process.env.APP_URL, "http://localhost:4000"),
   frontendUrl: cleanEnvValue(process.env.FRONTEND_URL, "http://localhost:3000"),
+  frontendUrls: parseList(process.env.FRONTEND_URLS),
   mongodbUri: cleanEnvValue(process.env.MONGODB_URI || process.env.MONGO_URI),
   mongodbScheme: cleanEnvValue(process.env.MONGODB_SCHEME, "mongodb"),
   mongodbHost: cleanEnvValue(process.env.MONGODB_HOST),
