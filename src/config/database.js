@@ -55,4 +55,10 @@ async function connectDatabase() {
   );
 }
 
-module.exports = { connectDatabase, buildMongoUri };
+async function disconnectDatabase() {
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+  }
+}
+
+module.exports = { connectDatabase, disconnectDatabase, buildMongoUri };

@@ -12,7 +12,13 @@ const apiRouter = express.Router();
 
 apiRouter.get("/health", (_req, res) => {
   const state = startupState.getState();
-  res.json(successResponse(state, state.status === "ready" ? "Service healthy" : "Service starting"));
+  const message =
+    state.status === "ready"
+      ? "Service healthy"
+      : state.status === "degraded"
+        ? "Service degraded"
+        : "Service starting";
+  res.json(successResponse(state, message));
 });
 
 apiRouter.use((req, res, next) => {
@@ -20,9 +26,20 @@ apiRouter.use((req, res, next) => {
     return next();
   }
 
+  const state = startupState.getState();
+  const isDegraded = state.status === "degraded";
+
   return res
     .status(503)
-    .json(errorResponse("SERVICE_STARTING", "Service is still initializing", startupState.getState()));
+    .json(
+      errorResponse(
+        isDegraded ? "SERVICE_DEGRADED" : "SERVICE_STARTING",
+        isDegraded
+          ? `Service startup dependency failed while initializing ${state.currentDependency || "dependencies"}`
+          : "Service is still initializing",
+        state
+      )
+    );
 });
 
 apiRouter.use("/auth", authRouter);

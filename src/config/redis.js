@@ -17,4 +17,18 @@ function getRedisConnection() {
   return redisConnection;
 }
 
-module.exports = { getRedisConnection };
+async function disconnectRedisConnection() {
+  if (!redisConnection) {
+    return;
+  }
+
+  try {
+    await redisConnection.quit();
+  } catch (_error) {
+    redisConnection.disconnect();
+  } finally {
+    redisConnection = null;
+  }
+}
+
+module.exports = { getRedisConnection, disconnectRedisConnection };

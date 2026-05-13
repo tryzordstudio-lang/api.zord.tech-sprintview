@@ -1,6 +1,6 @@
 const { Queue, Worker } = require("bullmq");
 const { env } = require("../config/env");
-const { getRedisConnection } = require("../config/redis");
+const { disconnectRedisConnection, getRedisConnection } = require("../config/redis");
 const { logger } = require("../config/logger");
 
 class QueueService {
@@ -55,6 +55,21 @@ class QueueService {
       removeOnComplete: true,
       removeOnFail: 100
     });
+  }
+
+  async stop() {
+    if (this.worker) {
+      await this.worker.close();
+      this.worker = null;
+    }
+
+    if (this.queue) {
+      await this.queue.close();
+      this.queue = null;
+    }
+
+    await disconnectRedisConnection();
+    logger.info("Queue service stopped");
   }
 }
 
