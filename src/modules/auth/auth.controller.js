@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const { authService } = require("../../services/auth.service");
 const { env } = require("../../config/env");
+const { logger } = require("../../config/logger");
 const { jiraService } = require("../../services/jira.service");
 const { successResponse } = require("../../utils/api-response");
 const { ACCESS_TOKEN_MAX_AGE_MS, REFRESH_TOKEN_MAX_AGE_MS, buildCookieOptions } = require("../../utils/token");
@@ -29,6 +30,18 @@ function redirectWithFrontendPath(res, path, searchParams = {}) {
     }
   }
   return res.redirect(url.toString());
+}
+
+function getOAuthProviderError(query, fallbackMessage) {
+  if (!query?.error && !query?.error_description) {
+    return null;
+  }
+
+  return {
+    message: query.error_description || query.error || fallbackMessage,
+    code: query.error || "oauth_error",
+    description: query.error_description || ""
+  };
 }
 
 async function signup(req, res) {
@@ -88,11 +101,18 @@ async function googleConnect(_req, res) {
 
 async function googleCallback(req, res) {
   try {
+    const providerError = getOAuthProviderError(req.query, "Google sign-in failed");
+    if (providerError) {
+      logger.warn({ provider: "google", ...providerError }, "Google OAuth provider returned an error");
+      return redirectWithError(res, providerError.message);
+    }
+
     const result = await authService.handleGoogleCallback(req.query);
     setAuthCookies(res, result.tokens);
-    res.redirect(new URL("/app", env.frontendUrl).toString());
+    return res.redirect(new URL("/app", env.frontendUrl).toString());
   } catch (error) {
-    redirectWithError(res, error.message || "Google sign-in failed");
+    logger.error({ err: error, provider: "google" }, "Google OAuth callback failed");
+    return redirectWithError(res, error.message || "Google sign-in failed");
   }
 }
 
@@ -103,6 +123,12 @@ async function atlassianConnect(_req, res) {
 
 async function atlassianCallback(req, res) {
   try {
+    const providerError = getOAuthProviderError(req.query, "Atlassian sign-in failed");
+    if (providerError) {
+      logger.warn({ provider: "atlassian", ...providerError }, "Atlassian OAuth provider returned an error");
+      return redirectWithError(res, providerError.message);
+    }
+
     const decodedState = jwt.verify(req.query.state, env.jwtAccessSecret);
 
     if (decodedState.flow === "jira-connect") {
@@ -114,6 +140,7 @@ async function atlassianCallback(req, res) {
     setAuthCookies(res, result.tokens);
     return redirectWithFrontendPath(res, "/app");
   } catch (error) {
+    logger.error({ err: error, provider: "atlassian" }, "Atlassian OAuth callback failed");
     return redirectWithError(res, error.message || "Atlassian sign-in failed");
   }
 }
