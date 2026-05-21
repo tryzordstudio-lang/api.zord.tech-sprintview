@@ -5,6 +5,7 @@ const { sprintRouter } = require("../modules/sprint/sprint.routes");
 const { reportRouter } = require("../modules/reports/report.routes");
 const { settingsRouter } = require("../modules/settings/settings.routes");
 const { usersRouter } = require("../modules/users/users.routes");
+const { templateRouter } = require("../modules/templates/template.routes");
 const { startupState } = require("../config/runtime-state");
 const { errorResponse, successResponse } = require("../utils/api-response");
 
@@ -48,5 +49,6 @@ apiRouter.use("/sprints", sprintRouter);
 apiRouter.use("/report", reportRouter);
 apiRouter.use("/settings", settingsRouter);
 apiRouter.use("/users", usersRouter);
+apiRouter.use("/templates", templateRouter);
 
 module.exports = { apiRouter };

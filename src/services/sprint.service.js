@@ -5,7 +5,6 @@ const { Sprint } = require("../models/sprint.model");
 const { Story } = require("../models/story.model");
 const { logger } = require("../config/logger");
 const { ApiError } = require("../utils/api-error");
-const { randomToken } = require("../utils/crypto");
 const { aiService } = require("./ai.service");
 const { healthService } = require("./health.service");
 const { jiraService } = require("./jira.service");
@@ -111,7 +110,6 @@ class SprintService {
           }
         : undefined,
       status: autoAnalyze ? "processing" : "imported",
-      shareToken: randomToken(16),
       createdBy: userId
     });
 
@@ -141,8 +139,7 @@ class SprintService {
     if (autoAnalyze) {
       await reportService.ensureReport({
         workspaceId,
-        sprintId: sprint._id,
-        shareToken: sprint.shareToken
+        sprintId: sprint._id
       });
 
       await queueService.enqueue(JOB_NAMES.GENERATE_INTELLIGENCE, {
@@ -232,8 +229,7 @@ class SprintService {
 
     const report = await reportService.ensureReport({
       workspaceId,
-      sprintId: sprint._id,
-      shareToken: sprint.shareToken
+      sprintId: sprint._id
     });
 
     if (report?._id) {
@@ -250,6 +246,27 @@ class SprintService {
     return this.getSprintById({ sprintId: sprint._id, workspaceId });
   }
 
+  async markIntelligenceFailed({ sprintId, workspaceId, error }) {
+    const sprint = await Sprint.findOne({ _id: sprintId, workspaceId });
+    if (!sprint) {
+      return null;
+    }
+
+    sprint.status = "failed";
+    await sprint.save();
+
+    logger.error(
+      {
+        err: error,
+        sprintId: sprint._id,
+        workspaceId
+      },
+      "Sprint intelligence generation failed"
+    );
+
+    return sprint.toObject();
+  }
+
   async retryAi({ sprintId, workspaceId }) {
     const sprint = await Sprint.findOneAndUpdate(
       { _id: sprintId, workspaceId },
@@ -263,8 +280,7 @@ class SprintService {
 
     await reportService.ensureReport({
       workspaceId,
-      sprintId: sprint._id,
-      shareToken: sprint.shareToken
+      sprintId: sprint._id
     });
 
     await queueService.enqueue(JOB_NAMES.GENERATE_INTELLIGENCE, {

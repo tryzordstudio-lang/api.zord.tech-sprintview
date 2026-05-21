@@ -26,7 +26,7 @@ class JiraService {
       audience: "api.atlassian.com",
       client_id: env.atlassianClientId,
       scope: env.atlassianScopes,
-      redirect_uri: env.atlassianAuthRedirectUri,
+      redirect_uri: env.atlassianRedirectUri,
       state,
       response_type: "code",
       prompt: "consent"
@@ -64,7 +64,7 @@ class JiraService {
         client_id: env.atlassianClientId,
         client_secret: env.atlassianClientSecret,
         code,
-        redirect_uri: env.atlassianAuthRedirectUri
+        redirect_uri: env.atlassianRedirectUri
       })
     });
 

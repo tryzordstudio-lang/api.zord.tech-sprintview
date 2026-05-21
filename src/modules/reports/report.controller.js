@@ -10,17 +10,60 @@ async function listReports(req, res) {
   res.json(successResponse(result));
 }
 
-async function getPublicReport(req, res) {
-  const result = await reportService.getPublicReport(req.params.token);
-  res.json(successResponse(result));
-}
-
 async function getReportById(req, res) {
   const result = await reportService.getReportById({
     reportId: req.params.id,
     workspaceId: req.user.workspaceId
   });
   res.json(successResponse(result));
+}
+
+async function updateReportPreferences(req, res) {
+  const result = await reportService.updateReportPreferences({
+    reportId: req.params.id,
+    workspaceId: req.user.workspaceId,
+    payload: req.body
+  });
+
+  res.json(successResponse(result, "Report preferences updated"));
+}
+
+async function updateReportSharing(req, res) {
+  const result = await reportService.updateReportSharing({
+    reportId: req.params.id,
+    workspaceId: req.user.workspaceId,
+    payload: req.body
+  });
+
+  res.json(successResponse(result, "Report sharing updated"));
+}
+
+async function getPublicReport(req, res) {
+  const result = await reportService.getPublicReportBySlug({
+    slug: req.params.slug,
+    password: req.query.password || req.body?.password || ""
+  });
+
+  res.json(successResponse(result));
+}
+
+async function listPublicReportComments(req, res) {
+  const result = await reportService.listPublicCommentsBySlug({
+    slug: req.params.slug,
+    password: req.query.password || req.body?.password || ""
+  });
+
+  res.json(successResponse(result));
+}
+
+async function addPublicReportComment(req, res) {
+  const result = await reportService.addPublicCommentBySlug({
+    slug: req.params.slug,
+    password: req.body?.password || "",
+    payload: req.body
+  });
+
+  res.json(successResponse(result, "Comment added"));
 }
 
 async function getPdf(req, res) {
@@ -33,14 +76,14 @@ async function getWord(req, res) {
   res.json(successResponse(result, "Word document generated"));
 }
 
-async function updateReportStatus(req, res) {
-  const result = await reportService.updateReportStatus({
-    reportId: req.params.id,
-    workspaceId: req.user.workspaceId,
-    status: req.body.status
-  });
-
-  res.json(successResponse(result, "Report status updated"));
-}
-
-module.exports = { listReports, getPublicReport, getReportById, getPdf, getWord, updateReportStatus };
+module.exports = {
+  listReports,
+  getReportById,
+  updateReportPreferences,
+  updateReportSharing,
+  getPublicReport,
+  listPublicReportComments,
+  addPublicReportComment,
+  getPdf,
+  getWord
+};

@@ -16,6 +16,13 @@ const DEMO_PASSWORD = "Demo@12345";
 const DEMO_NAME = "Demo Workspace Owner";
 const DEMO_WORKSPACE = "SprintView Demo Workspace";
 
+function slugify(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "report";
+}
+
 function calculateMetrics(stories) {
   const metrics = {
     totalStories: stories.length,
@@ -191,6 +198,62 @@ function buildDemoSprints() {
         { issueKey: "NEP-245", name: "Polish report export layout", status: "In Review", assignee: "Leo", storyPoints: 2, issueType: "Task", blocked: false },
         { issueKey: "NEP-246", name: "Add trend footnotes for leadership deck", status: "To Do", assignee: "Asha", storyPoints: 1, issueType: "Task", blocked: false }
       ]
+    },
+    {
+      projectName: "Neptune Commerce Platform",
+      sprintNumber: 25,
+      name: "Sprint 25 - Enterprise Reporting Rollout",
+      goal: "Stabilize reporting, shipment visibility, and stakeholder publishing across the platform.",
+      dateRange: {
+        start: new Date("2026-05-13T00:00:00.000Z"),
+        end: new Date("2026-05-26T23:59:59.000Z")
+      },
+      aiSummary:
+        "This is the most operationally complex sprint in the demo workspace. Delivery is spread across analytics, support, and release engineering, with QA pressure and one upstream blocker keeping the sprint in a watchlisted state.",
+      recommendations: [
+        "Keep the release narrative focused on the visible dependencies rather than the full implementation backlog.",
+        "Move the blocked finance export and webhook hardening items behind explicit owners before leadership review.",
+        "Use the shared report link for stakeholder reviews and keep the internal workspace as the source of truth."
+      ],
+      insights: [
+        {
+          type: "risk",
+          severity: "high",
+          content: "A single finance export dependency is blocking report accuracy and needs owner escalation."
+        },
+        {
+          type: "workload",
+          severity: "medium",
+          content: "Priya and Asha are carrying the highest weighted load, which increases delivery concentration risk."
+        },
+        {
+          type: "productivity",
+          severity: "medium",
+          content: "QA and release verification are consuming more capacity than the previous sprint."
+        },
+        {
+          type: "recommendation",
+          severity: "low",
+          content: "Publish the report after the remaining blocker is resolved so leadership sees a clean narrative."
+        }
+      ],
+      reportStatus: "published",
+      createdAt: new Date("2026-05-26T10:00:00.000Z"),
+      updatedAt: new Date("2026-05-26T10:00:00.000Z"),
+      stories: [
+        { issueKey: "NEP-251", name: "Finalize executive narrative for steering review", status: "Done", assignee: "Maya", storyPoints: 5, issueType: "Story", blocked: false },
+        { issueKey: "NEP-252", name: "Ship report comparison card", status: "Done", assignee: "Ravi", storyPoints: 3, issueType: "Story", blocked: false },
+        { issueKey: "NEP-253", name: "Resolve finance export mapping", status: "Blocked", assignee: "Priya", storyPoints: 5, issueType: "Task", blocked: true },
+        { issueKey: "NEP-254", name: "Validate PDF/Word export parity", status: "In Review", assignee: "Leo", storyPoints: 3, issueType: "Task", blocked: false },
+        { issueKey: "NEP-255", name: "Refine stakeholder sharing controls", status: "Done", assignee: "Asha", storyPoints: 2, issueType: "Story", blocked: false },
+        { issueKey: "NEP-256", name: "QA report spacing on desktop", status: "In Review", assignee: "Priya", storyPoints: 3, issueType: "Task", blocked: false },
+        { issueKey: "NEP-257", name: "QA report spacing on mobile", status: "To Do", assignee: "Ravi", storyPoints: 2, issueType: "Task", blocked: false },
+        { issueKey: "NEP-258", name: "Update public share copy", status: "Done", assignee: "Maya", storyPoints: 1, issueType: "Task", blocked: false },
+        { issueKey: "NEP-259", name: "Add release checklist notes", status: "To Do", assignee: "Leo", storyPoints: 1, issueType: "Task", blocked: false },
+        { issueKey: "NEP-260", name: "Review customer-facing annotations", status: "In Progress", assignee: "Asha", storyPoints: 2, issueType: "Story", blocked: false },
+        { issueKey: "NEP-261", name: "Backfill support signal report", status: "Blocked", assignee: "Priya", storyPoints: 3, issueType: "Task", blocked: true },
+        { issueKey: "NEP-262", name: "Validate release communication timeline", status: "Done", assignee: "Maya", storyPoints: 2, issueType: "Story", blocked: false }
+      ]
     }
   ];
 }
@@ -312,6 +375,27 @@ async function reseedWorkspace(workspaceId, userId) {
       sprintId: sprint._id,
       shareToken: sprint.shareToken,
       status: sprintSeed.reportStatus,
+      sharing:
+        sprintSeed.sprintNumber === 25
+          ? {
+              mode: "public",
+              publicSlug: `${slugify(DEMO_WORKSPACE)}--${workspaceId.toString()}--${slugify(sprintSeed.name)}`,
+              allowComments: true
+            }
+          : undefined,
+      comments:
+        sprintSeed.sprintNumber === 25
+          ? [
+              {
+                authorName: "Steering Committee",
+                message: "Clean narrative. Keep the release blocker visible until finance exports are confirmed."
+              },
+              {
+                authorName: "Product Leadership",
+                message: "This is the report to use for stakeholder review once the blocker clears."
+              }
+            ]
+          : undefined,
       createdAt: sprintSeed.createdAt,
       updatedAt: sprintSeed.updatedAt
     });

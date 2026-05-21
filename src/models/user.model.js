@@ -29,6 +29,14 @@ const oauthProviderSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const passwordResetSchema = new mongoose.Schema(
+  {
+    tokenHash: String,
+    expiresAt: Date
+  },
+  { _id: false }
+);
+
 const userSchema = new mongoose.Schema(
   {
     workspaceId: {
@@ -52,6 +60,17 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    role: {
+      type: String,
+      enum: ["owner", "admin", "editor", "viewer"],
+      default: "owner",
+      index: true
+    },
+    status: {
+      type: String,
+      enum: ["active", "invited", "suspended"],
+      default: "active"
+    },
     google: {
       type: oauthProviderSchema,
       default: () => ({})
@@ -67,6 +86,10 @@ const userSchema = new mongoose.Schema(
     refreshTokens: {
       type: [refreshTokenSchema],
       default: []
+    },
+    passwordReset: {
+      type: passwordResetSchema,
+      default: () => ({})
     }
   },
   { timestamps: true }

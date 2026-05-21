@@ -68,8 +68,24 @@ async function refresh(req, res) {
   res.json(successResponse({ user: result.user }, "Token refreshed"));
 }
 
+async function forgotPassword(req, res) {
+  const result = await authService.requestPasswordReset(req.body);
+  res.json(
+    successResponse(
+      result,
+      "If an account exists for that email, a password reset link has been prepared."
+    )
+  );
+}
+
+async function resetPassword(req, res) {
+  const result = await authService.resetPassword(req.body);
+  clearAuthCookies(res);
+  res.json(successResponse(result, "Password reset successful. Please sign in again."));
+}
+
 async function logout(req, res) {
-  await authService.logout(req.user.id, req.cookies.refreshToken);
+  await authService.logout(req.cookies.refreshToken);
   clearAuthCookies(res);
   res.json(successResponse({ loggedOut: true }, "Logout successful"));
 }
@@ -150,6 +166,8 @@ module.exports = {
   login,
   checkEmailAvailability,
   refresh,
+  forgotPassword,
+  resetPassword,
   logout,
   changePassword,
   deleteAccount,

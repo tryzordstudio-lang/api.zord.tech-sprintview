@@ -30,7 +30,12 @@ class QueueService {
         if (!handler) {
           throw new Error(`No handler registered for job ${job.name}`);
         }
-        return handler(job.data);
+        return handler(job.data, {
+          jobId: job.id,
+          attemptsMade: job.attemptsMade,
+          attempts: Number(job.opts?.attempts || 1),
+          finalAttempt: job.attemptsMade + 1 >= Number(job.opts?.attempts || 1)
+        });
       },
       { connection }
     );
@@ -47,7 +52,12 @@ class QueueService {
     }
 
     if (!this.queue || env.runInlineJobs) {
-      return handler(payload);
+      return handler(payload, {
+        attemptsMade: 0,
+        attempts: 1,
+        finalAttempt: true,
+        inline: true
+      });
     }
 
     return this.queue.add(jobName, payload, {

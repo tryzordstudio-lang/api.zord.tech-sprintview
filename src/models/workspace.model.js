@@ -37,6 +37,21 @@ const notificationsSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const accessControlSchema = new mongoose.Schema(
+  {
+    defaultShareMode: {
+      type: String,
+      enum: ["private", "team", "public", "password"],
+      default: "team"
+    },
+    allowPublicLinks: {
+      type: Boolean,
+      default: true
+    }
+  },
+  { _id: false }
+);
+
 const workspaceSchema = new mongoose.Schema(
   {
     name: {
@@ -54,12 +69,21 @@ const workspaceSchema = new mongoose.Schema(
       trim: true,
       default: ""
     },
+    timezone: {
+      type: String,
+      trim: true,
+      default: "UTC"
+    },
     branding: {
       type: brandingSchema,
       default: () => ({})
     },
     notifications: {
       type: notificationsSchema,
+      default: () => ({})
+    },
+    accessControl: {
+      type: accessControlSchema,
       default: () => ({})
     },
     ownerId: {

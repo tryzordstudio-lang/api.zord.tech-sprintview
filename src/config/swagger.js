@@ -10,6 +10,8 @@ function buildOpenApiSpec() {
       "/auth/signup": { post: { summary: "Create account" } },
       "/auth/login": { post: { summary: "Login" } },
       "/auth/refresh": { post: { summary: "Rotate refresh token" } },
+      "/auth/forgot-password": { post: { summary: "Request a password reset link" } },
+      "/auth/reset-password": { post: { summary: "Reset password with token" } },
       "/auth/logout": { post: { summary: "Logout" } },
       "/auth/oauth/google/connect": { get: { summary: "Redirect to Google OAuth" } },
       "/auth/oauth/google/callback": { get: { summary: "Handle Google OAuth callback" } },
@@ -31,8 +33,6 @@ function buildOpenApiSpec() {
       "/sprints/{id}/retry-ai": { post: { summary: "Retry AI generation" } },
       "/report": { get: { summary: "List reports with pagination and filters" } },
       "/report/internal/{id}": { get: { summary: "Fetch internal report details" } },
-      "/report/{token}": { get: { summary: "Fetch public report" } },
-      "/report/{id}/status": { patch: { summary: "Publish or unpublish a report" } },
       "/report/{id}/pdf": { get: { summary: "Generate or fetch report PDF" } },
       "/report/{id}/word": { get: { summary: "Generate or fetch report Word document" } },
       "/settings": {

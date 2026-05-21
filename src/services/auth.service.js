@@ -9,9 +9,11 @@ const { Story } = require("../models/story.model");
 const { User } = require("../models/user.model");
 const { Workspace } = require("../models/workspace.model");
 const { ApiError } = require("../utils/api-error");
-const { hashToken } = require("../utils/crypto");
+const { hashToken, randomToken } = require("../utils/crypto");
 const { hashPassword, verifyPassword } = require("../utils/password");
 const { signAccessToken, signRefreshToken } = require("../utils/token");
+
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 
 class AuthService {
   async checkEmailAvailability(email) {
@@ -52,7 +54,8 @@ class AuthService {
       workspaceId: workspace._id,
       name: displayName,
       email: normalizedEmail,
-      passwordHash
+      passwordHash,
+      role: "owner"
     });
 
     workspace.ownerId = user._id;
@@ -245,12 +248,19 @@ class AuthService {
     return { user: this.serializeUser(user), tokens };
   }
 
-  async logout(userId, refreshToken) {
+  async logout(refreshToken) {
     if (!refreshToken) {
       return;
     }
 
-    const user = await User.findById(userId);
+    let payload;
+    try {
+      payload = jwt.verify(refreshToken, env.jwtRefreshSecret);
+    } catch (_error) {
+      return;
+    }
+
+    const user = await User.findById(payload.userId);
     if (!user) {
       return;
     }
@@ -258,6 +268,58 @@ class AuthService {
     const tokenHash = hashToken(refreshToken);
     user.refreshTokens = user.refreshTokens.filter((item) => item.tokenHash !== tokenHash);
     await user.save();
+  }
+
+  async requestPasswordReset({ email }) {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return {
+        requested: true,
+        previewResetUrl: null
+      };
+    }
+
+    const token = randomToken(32);
+    user.passwordReset = {
+      tokenHash: hashToken(token),
+      expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS)
+    };
+    await user.save();
+
+    const previewResetUrl = new URL("/reset-password", env.frontendUrl);
+    previewResetUrl.searchParams.set("token", token);
+
+    return {
+      requested: true,
+      previewResetUrl: env.isProduction ? null : previewResetUrl.toString()
+    };
+  }
+
+  async resetPassword({ token, newPassword }) {
+    const tokenHash = hashToken(token);
+    const user = await User.findOne({
+      "passwordReset.tokenHash": tokenHash
+    });
+
+    if (!user) {
+      throw new ApiError(400, "INVALID_RESET_TOKEN", "Password reset token is invalid or has expired");
+    }
+
+    const expiresAt = user.passwordReset?.expiresAt ? new Date(user.passwordReset.expiresAt) : null;
+    if (!expiresAt || expiresAt.getTime() < Date.now()) {
+      user.passwordReset = {};
+      await user.save();
+      throw new ApiError(400, "INVALID_RESET_TOKEN", "Password reset token is invalid or has expired");
+    }
+
+    user.passwordHash = await hashPassword(newPassword);
+    user.passwordReset = {};
+    user.refreshTokens = [];
+    await user.save();
+
+    return { passwordReset: true };
   }
 
   async changePassword(userId, { currentPassword, newPassword }) {
@@ -278,6 +340,7 @@ class AuthService {
     }
 
     user.passwordHash = await hashPassword(newPassword);
+    user.passwordReset = {};
     user.refreshTokens = [];
     await user.save();
 
@@ -351,6 +414,7 @@ class AuthService {
       workspaceId: user.workspaceId.toString(),
       name: user.name,
       email: user.email,
+      role: user.role || "owner",
       jiraConnected: Boolean(user.jira?.connected),
       authProviders
     };
@@ -402,6 +466,7 @@ class AuthService {
         workspaceId: workspace._id,
         name,
         email: normalizedEmail,
+        role: "owner",
         [providerField]: {
           id: providerId,
           picture

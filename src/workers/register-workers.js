@@ -4,9 +4,21 @@ const { reportService } = require("../services/report.service");
 const { sprintService } = require("../services/sprint.service");
 
 function registerWorkers() {
-  queueService.registerHandler(JOB_NAMES.GENERATE_INTELLIGENCE, async (payload) =>
-    sprintService.generateIntelligence(payload)
-  );
+  queueService.registerHandler(JOB_NAMES.GENERATE_INTELLIGENCE, async (payload, context = {}) => {
+    try {
+      return await sprintService.generateIntelligence(payload);
+    } catch (error) {
+      if (context.finalAttempt) {
+        await sprintService.markIntelligenceFailed({
+          sprintId: payload.sprintId,
+          workspaceId: payload.workspaceId,
+          error
+        });
+      }
+
+      throw error;
+    }
+  });
 
   queueService.registerHandler(JOB_NAMES.GENERATE_PDF, async (payload) =>
     reportService.generatePdf(payload.reportId, payload.workspaceId)

@@ -5,6 +5,7 @@ const { Project } = require("../models/project.model");
 const { Story } = require("../models/story.model");
 const { Workspace } = require("../models/workspace.model");
 const { ApiError } = require("../utils/api-error");
+const { hashPassword, verifyPassword } = require("../utils/password");
 const { pdfService } = require("./pdf.service");
 const { storageService } = require("./storage.service");
 
@@ -12,14 +13,9 @@ class ReportService {
   async listReports({ workspaceId, query }) {
     const filters = { workspaceId };
 
-    if (query.status) {
-      filters.status = query.status;
-    }
-
     const sortFieldMap = {
       createdAt: "createdAt",
-      updatedAt: "updatedAt",
-      status: "status"
+      updatedAt: "updatedAt"
     };
     const sortBy = sortFieldMap[query.sortBy] || "updatedAt";
     const sortDirection = query.sortOrder === "asc" ? 1 : -1;
@@ -48,7 +44,7 @@ class ReportService {
         const sprint = sprintMap.get(String(report.sprintId)) || null;
 
         return {
-          report,
+          report: this.serializeReportRecord(report),
           sprint,
           project: sprint?.projectId ? projectMap.get(String(sprint.projectId)) || null : null
         };
@@ -62,13 +58,12 @@ class ReportService {
     };
   }
 
-  async ensureReport({ workspaceId, sprintId, shareToken }) {
+  async ensureReport({ workspaceId, sprintId }) {
     const report = await Report.findOneAndUpdate(
       { sprintId, workspaceId },
       {
         workspaceId,
-        sprintId,
-        shareToken
+        sprintId
       },
       {
         upsert: true,
@@ -80,20 +75,53 @@ class ReportService {
     return report;
   }
 
-  async getPublicReport(shareToken) {
-    const report = await Report.findOne({
-      shareToken,
-      status: "published"
-    }).lean();
+  async updateReportPreferences({ reportId, workspaceId, payload }) {
+    const report = await Report.findOne({ _id: reportId, workspaceId });
     if (!report) {
-      throw new ApiError(404, "REPORT_NOT_FOUND", "Public report not found");
+      throw new ApiError(404, "REPORT_NOT_FOUND", "Report not found");
     }
 
-    return this.buildReportPayload({
-      sprintId: report.sprintId,
-      workspaceId: report.workspaceId,
-      reportId: report._id
-    });
+    report.title = payload.title || report.title || "";
+    report.preferences = {
+      themeVariant: payload.themeVariant,
+      templatePreset: payload.templatePreset,
+      widgetLayout: payload.widgetLayout
+    };
+    await report.save();
+
+    return {
+      reportId: report._id.toString(),
+      title: report.title || "",
+      preferences: report.preferences
+    };
+  }
+
+  async updateReportSharing({ reportId, workspaceId, payload }) {
+    const report = await Report.findOne({ _id: reportId, workspaceId });
+    if (!report) {
+      throw new ApiError(404, "REPORT_NOT_FOUND", "Report not found");
+    }
+
+    const workspace = await Workspace.findById(workspaceId).lean();
+    const workspaceSlug = this.slugify(workspace?.slug || workspace?.name || `workspace-${workspaceId}`);
+    const reportSlug = this.slugify(payload.publicSlug || report.title || `report-${report._id}`);
+    const publicSlug = payload.mode === "public" || payload.mode === "password"
+      ? `${workspaceSlug}--${workspaceId.toString()}--${reportSlug}`
+      : "";
+
+    report.sharing = {
+      mode: payload.mode,
+      publicSlug,
+      passwordHash: payload.mode === "password" ? await hashPassword(payload.password) : "",
+      allowComments: Boolean(payload.allowComments),
+      expiresAt: payload.expiresAt ? new Date(payload.expiresAt) : null
+    };
+    await report.save();
+
+    return {
+      reportId: report._id.toString(),
+      sharing: this.serializeSharing(report.sharing)
+    };
   }
 
   async getReportById({ reportId, workspaceId }) {
@@ -107,6 +135,99 @@ class ReportService {
       workspaceId,
       reportId: report._id
     });
+  }
+
+  async getPublicReportBySlug({ slug, password }) {
+    const report = await this.resolvePublicReportBySlug({ slug, password });
+
+    const payload = await this.buildReportPayload({
+      sprintId: report.sprintId,
+      workspaceId: report.workspaceId,
+      reportId: report._id
+    });
+
+    return {
+      ...payload,
+      public: true,
+      sharing: this.serializeSharing(report.sharing),
+      comments: (report.comments || []).map((comment, index) => ({
+        id: `${report._id.toString()}-${index}`,
+        authorName: comment.authorName || "Anonymous",
+        message: comment.message,
+        createdAt: comment.createdAt || report.updatedAt || report.createdAt
+      }))
+    };
+  }
+
+  async listPublicCommentsBySlug({ slug, password }) {
+    const report = await this.resolvePublicReportBySlug({ slug, password });
+
+    return {
+      reportId: report._id.toString(),
+      comments: (report.comments || []).map((comment, index) => ({
+        id: `${report._id.toString()}-${index}`,
+        authorName: comment.authorName || "Anonymous",
+        message: comment.message,
+        createdAt: comment.createdAt || report.updatedAt || report.createdAt
+      }))
+    };
+  }
+
+  async addPublicCommentBySlug({ slug, password, payload }) {
+    const report = await Report.findOne({ "sharing.publicSlug": slug });
+    if (!report) {
+      throw new ApiError(404, "REPORT_NOT_FOUND", "Shared report not found");
+    }
+
+    await this.resolvePublicReportBySlug({ slug, password });
+
+    if (!report.sharing?.allowComments) {
+      throw new ApiError(403, "COMMENTS_DISABLED", "Comments are disabled for this report");
+    }
+
+    report.comments = report.comments || [];
+    report.comments.push({
+      authorName: payload.authorName || "Anonymous",
+      message: payload.message
+    });
+    await report.save();
+
+    const latest = report.comments[report.comments.length - 1];
+    return {
+      id: `${report._id.toString()}-${report.comments.length - 1}`,
+      authorName: latest.authorName || "Anonymous",
+      message: latest.message,
+      createdAt: latest.createdAt || new Date()
+    };
+  }
+
+  async resolvePublicReportBySlug({ slug, password }) {
+    const report = await Report.findOne({ "sharing.publicSlug": slug }).lean();
+
+    if (!report) {
+      throw new ApiError(404, "REPORT_NOT_FOUND", "Shared report not found");
+    }
+
+    const mode = report.sharing?.mode || "private";
+    if (mode === "private") {
+      throw new ApiError(403, "REPORT_PRIVATE", "This report is private");
+    }
+
+    const expiresAt = report.sharing?.expiresAt ? new Date(report.sharing.expiresAt) : null;
+    if (expiresAt && expiresAt.getTime() < Date.now()) {
+      throw new ApiError(410, "REPORT_LINK_EXPIRED", "This shared report link has expired");
+    }
+
+    if (mode === "password") {
+      const isValid = report.sharing?.passwordHash
+        ? await verifyPassword(String(password || ""), report.sharing.passwordHash)
+        : false;
+      if (!isValid) {
+        throw new ApiError(401, "REPORT_PASSWORD_REQUIRED", "Valid report password is required");
+      }
+    }
+
+    return report;
   }
 
   async buildReportPayload({ sprintId, workspaceId, reportId }) {
@@ -129,7 +250,7 @@ class ReportService {
     const orderedRecentSprints = [...recentSprints].reverse();
 
     return {
-      report,
+      report: this.serializeReportRecord(report),
       project,
       sprint,
       workspace,
@@ -196,18 +317,6 @@ class ReportService {
     };
   }
 
-  async updateReportStatus({ reportId, workspaceId, status }) {
-    const report = await Report.findOne({ _id: reportId, workspaceId });
-    if (!report) {
-      throw new ApiError(404, "REPORT_NOT_FOUND", "Report not found");
-    }
-
-    report.status = status;
-    await report.save();
-
-    return report.toObject();
-  }
-
   buildWordDocument(payload) {
     const sprint = payload.sprint || {};
     const project = payload.project || {};
@@ -240,14 +349,19 @@ class ReportService {
       ["Blocked stories", `${sprint.metrics?.blocked || 0}`],
       ["Pending stories", `${sprint.metrics?.pending || 0}`]
     ]
-      .map(([label, value]) => `<tr><td><strong>${label}</strong></td><td>${value}</td></tr>`)
+      .map(
+        ([label, value]) =>
+          `<tr><td><strong>${this.escapeHtml(label)}</strong></td><td>${this.escapeHtml(value)}</td></tr>`
+      )
       .join("");
 
     const insightRows = insights.length
       ? insights
           .map(
             (insight) =>
-              `<tr><td>${insight.type}</td><td>${insight.severity}</td><td>${insight.content}</td></tr>`
+              `<tr><td>${this.escapeHtml(insight.type)}</td><td>${this.escapeHtml(
+                insight.severity
+              )}</td><td>${this.escapeHtml(insight.content)}</td></tr>`
           )
           .join("")
       : `<tr><td colspan="3">No AI insights available.</td></tr>`;
@@ -256,20 +370,24 @@ class ReportService {
       ? stories
           .map(
             (story) =>
-              `<tr><td>${story.issueKey || "Story"}</td><td>${story.name}</td><td>${story.status || "To Do"}</td><td>${story.assignee || "Unassigned"}</td><td>${story.storyPoints || 0}</td></tr>`
+              `<tr><td>${this.escapeHtml(story.issueKey || "Story")}</td><td>${this.escapeHtml(
+                story.name
+              )}</td><td>${this.escapeHtml(story.status || "To Do")}</td><td>${this.escapeHtml(
+                story.assignee || "Unassigned"
+              )}</td><td>${this.escapeHtml(String(story.storyPoints || 0))}</td></tr>`
           )
           .join("")
       : `<tr><td colspan="5">No stories available.</td></tr>`;
 
     const recommendationList = recommendations.length
-      ? recommendations.map((item) => `<li>${item}</li>`).join("")
+      ? recommendations.map((item) => `<li>${this.escapeHtml(item)}</li>`).join("")
       : "<li>No recommendations available.</li>";
 
     return `<!doctype html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">
   <head>
     <meta charset="utf-8" />
-    <title>${sprint.name || "Report"}</title>
+    <title>${this.escapeHtml(sprint.name || "Report")}</title>
     <style>
       body { font-family: Arial, sans-serif; padding: 32px; color: #0f172a; }
       h1, h2, h3 { margin: 0 0 12px; }
@@ -291,11 +409,13 @@ class ReportService {
     </style>
   </head>
   <body>
-    <h1>${sprint.name || "Sprint report"}</h1>
-    <p class="meta">${project.name || "Workspace"} | ${sprint.goal || "No sprint goal recorded."}</p>
+    <h1>${this.escapeHtml(sprint.name || "Sprint report")}</h1>
+    <p class="meta">${this.escapeHtml(project.name || "Workspace")} | ${this.escapeHtml(
+      sprint.goal || "No sprint goal recorded."
+    )}</p>
     <div class="section">
       <h2>Executive Summary</h2>
-      <p>${sprint.aiSummary || "No AI summary available."}</p>
+      <p>${this.escapeHtml(sprint.aiSummary || "No AI summary available.")}</p>
     </div>
     <div class="section">
       <h2>Key Metrics</h2>
@@ -584,6 +704,47 @@ class ReportService {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "") || "chart";
+  }
+
+  serializeSharing(sharing = {}) {
+    return {
+      mode: sharing.mode || "team",
+      publicSlug: sharing.publicSlug || "",
+      allowComments: Boolean(sharing.allowComments),
+      hasPassword: Boolean(sharing.passwordHash),
+      expiresAt: sharing.expiresAt || null
+    };
+  }
+
+  serializeReportRecord(report) {
+    if (!report) {
+      return null;
+    }
+
+    return {
+      _id: report._id,
+      workspaceId: report.workspaceId,
+      sprintId: report.sprintId,
+      title: report.title || "",
+      preferences: {
+        themeVariant: report.preferences?.themeVariant || "enterprise",
+        templatePreset: report.preferences?.templatePreset || "executive",
+        widgetLayout: report.preferences?.widgetLayout || []
+      },
+      sharing: this.serializeSharing(report.sharing),
+      comments: Array.isArray(report.comments)
+        ? report.comments.map((comment, index) => ({
+            id: `${report._id.toString()}-${index}`,
+            authorName: comment.authorName || "Anonymous",
+            message: comment.message,
+            createdAt: comment.createdAt || report.updatedAt || report.createdAt
+          }))
+        : [],
+      pdfUrl: report.pdfUrl || "",
+      htmlSnapshotUrl: report.htmlSnapshotUrl || "",
+      createdAt: report.createdAt,
+      updatedAt: report.updatedAt
+    };
   }
 }
 

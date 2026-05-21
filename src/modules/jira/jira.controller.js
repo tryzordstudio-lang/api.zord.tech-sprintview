@@ -1,3 +1,5 @@
+const { env } = require("../../config/env");
+const { logger } = require("../../config/logger");
 const { jiraService } = require("../../services/jira.service");
 const { sprintService } = require("../../services/sprint.service");
 const { successResponse } = require("../../utils/api-response");
@@ -7,9 +9,41 @@ async function connect(req, res) {
   res.json(successResponse({ authUrl }));
 }
 
+function redirectWithFrontendPath(res, path, searchParams = {}) {
+  const url = new URL(path, env.frontendUrl);
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (value !== undefined && value !== null && value !== "") {
+      url.searchParams.set(key, String(value));
+    }
+  }
+  return res.redirect(url.toString());
+}
+
+function getOAuthProviderError(query, fallbackMessage) {
+  if (!query?.error && !query?.error_description) {
+    return null;
+  }
+
+  return query.error_description || query.error || fallbackMessage;
+}
+
 async function callback(req, res) {
-  const result = await jiraService.handleCallback(req.query);
-  res.json(successResponse(result, "Jira connected"));
+  try {
+    const providerError = getOAuthProviderError(req.query, "Jira connect failed");
+    if (providerError) {
+      return redirectWithFrontendPath(res, "/integrations", {
+        error: providerError
+      });
+    }
+
+    await jiraService.handleCallback(req.query);
+    return redirectWithFrontendPath(res, "/integrations", { connected: "jira" });
+  } catch (error) {
+    logger.error({ err: error, provider: "jira" }, "Jira OAuth callback failed");
+    return redirectWithFrontendPath(res, "/integrations", {
+      error: error.message || "Jira connect failed"
+    });
+  }
 }
 
 async function listBoards(req, res) {

@@ -31,7 +31,6 @@ The frontend is a dedicated Next.js app with:
 
 - enterprise dashboard shell
 - dashboard, sprints, reports, insights, analytics, integrations, and settings screens
-- a presentation-grade public report route at `/report/[token]`
 - reusable design-system components connected to the backend API
 
 ## Demo Account
@@ -47,7 +46,7 @@ Suggested usage flow:
 2. Start the frontend from `frontend/` with `npm run dev`
 3. Open `http://localhost:3000/signin`
 4. Sign in with the demo credentials above
-5. Review the seeded dashboard, open `Sprints`, inspect `Insights`, and use `Reports` for the published and draft examples
+5. Review the seeded dashboard, open `Sprints`, inspect `Insights`, and use `Reports` for the internal report workspace and exports
 
 ## Main API Prefix
 
@@ -68,7 +67,6 @@ Suggested usage flow:
 - `GET /api/v1/sprints/:id`
 - `DELETE /api/v1/sprints/:id/delete`
 - `POST /api/v1/sprints/:id/retry-ai`
-- `GET /api/v1/report/:token`
 - `GET /api/v1/report/:id/pdf`
 
 ## External Integrations

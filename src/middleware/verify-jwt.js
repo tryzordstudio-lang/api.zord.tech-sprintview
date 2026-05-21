@@ -22,7 +22,9 @@ async function verifyJWT(req, _res, next) {
     req.user = {
       id: user._id.toString(),
       workspaceId: user.workspaceId.toString(),
-      email: user.email
+      email: user.email,
+      role: user.role || "owner",
+      status: user.status || "active"
     };
 
     return next();

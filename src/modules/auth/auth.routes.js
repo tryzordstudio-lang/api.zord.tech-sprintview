@@ -4,6 +4,8 @@ const {
   signup,
   login,
   refresh,
+  forgotPassword,
+  resetPassword,
   logout,
   changePassword,
   deleteAccount,
@@ -20,6 +22,8 @@ const {
   emailAvailabilityQuerySchema,
   loginSchema,
   signupSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
   changePasswordSchema,
   deleteAccountSchema
 } = require("../../validators/auth.validator");
@@ -30,7 +34,9 @@ router.get("/check-email", validate(emailAvailabilityQuerySchema, "query"), asyn
 router.post("/signup", validate(signupSchema), asyncHandler(signup));
 router.post("/login", validate(loginSchema), asyncHandler(login));
 router.post("/refresh", asyncHandler(refresh));
-router.post("/logout", verifyJWT, asyncHandler(logout));
+router.post("/forgot-password", validate(forgotPasswordSchema), asyncHandler(forgotPassword));
+router.post("/reset-password", validate(resetPasswordSchema), asyncHandler(resetPassword));
+router.post("/logout", asyncHandler(logout));
 router.patch("/password", verifyJWT, validate(changePasswordSchema), asyncHandler(changePassword));
 router.delete("/account", verifyJWT, validate(deleteAccountSchema), asyncHandler(deleteAccount));
 router.get("/me", verifyJWT, asyncHandler(me));

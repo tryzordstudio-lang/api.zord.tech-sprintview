@@ -56,10 +56,6 @@ const sprintSchema = new mongoose.Schema(
       type: [String],
       default: []
     },
-    shareToken: {
-      type: String,
-      index: true
-    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

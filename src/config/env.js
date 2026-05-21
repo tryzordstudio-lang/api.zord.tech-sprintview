@@ -2,6 +2,17 @@ const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
 
+const DEFAULT_ACCESS_SECRET = "access-secret";
+const DEFAULT_REFRESH_SECRET = "refresh-secret";
+const DEFAULT_ENCRYPTION_SECRET = "0123456789abcdef0123456789abcdef";
+const PLACEHOLDER_SECRETS = new Set([
+  "replace-with-long-secret",
+  "replace-with-32-char-secret",
+  DEFAULT_ACCESS_SECRET,
+  DEFAULT_REFRESH_SECRET,
+  DEFAULT_ENCRYPTION_SECRET
+]);
+
 function loadEnvFiles() {
   const rootDir = process.cwd();
   const nodeEnv = String(process.env.NODE_ENV || "development").trim() || "development";
@@ -86,6 +97,43 @@ function parseTrustProxy(value) {
   return Number.isNaN(numeric) ? normalized : numeric;
 }
 
+function validateSecrets(resolvedEnv) {
+  const issues = [];
+  const accessSecret = cleanEnvValue(resolvedEnv.jwtAccessSecret);
+  const refreshSecret = cleanEnvValue(resolvedEnv.jwtRefreshSecret);
+  const encryptionSecret = cleanEnvValue(resolvedEnv.encryptionSecret);
+
+  if (resolvedEnv.isProduction) {
+    if (!accessSecret || PLACEHOLDER_SECRETS.has(accessSecret)) {
+      issues.push("JWT_ACCESS_SECRET must be set to a strong unique value in production");
+    }
+
+    if (!refreshSecret || PLACEHOLDER_SECRETS.has(refreshSecret)) {
+      issues.push("JWT_REFRESH_SECRET must be set to a strong unique value in production");
+    }
+
+    if (!encryptionSecret || PLACEHOLDER_SECRETS.has(encryptionSecret)) {
+      issues.push("ENCRYPTION_SECRET must be set to a strong unique value in production");
+    }
+
+    if (accessSecret && accessSecret.length < 16) {
+      issues.push("JWT_ACCESS_SECRET must be at least 16 characters in production");
+    }
+
+    if (refreshSecret && refreshSecret.length < 16) {
+      issues.push("JWT_REFRESH_SECRET must be at least 16 characters in production");
+    }
+
+    if (encryptionSecret && encryptionSecret.length < 32) {
+      issues.push("ENCRYPTION_SECRET must be at least 32 characters in production");
+    }
+  }
+
+  if (issues.length) {
+    throw new Error(`Environment configuration invalid: ${issues.join("; ")}`);
+  }
+}
+
 const env = {
   nodeEnv: cleanEnvValue(process.env.NODE_ENV, "development"),
   isProduction: cleanEnvValue(process.env.NODE_ENV, "development") === "production",
@@ -101,11 +149,11 @@ const env = {
   mongodbUsername: cleanEnvValue(process.env.MONGODB_USERNAME),
   mongodbPassword: cleanEnvValue(process.env.MONGODB_PASSWORD),
   mongodbAuthSource: cleanEnvValue(process.env.MONGODB_AUTH_SOURCE),
-  jwtAccessSecret: cleanEnvValue(process.env.JWT_ACCESS_SECRET, "access-secret"),
-  jwtRefreshSecret: cleanEnvValue(process.env.JWT_REFRESH_SECRET, "refresh-secret"),
+  jwtAccessSecret: cleanEnvValue(process.env.JWT_ACCESS_SECRET, DEFAULT_ACCESS_SECRET),
+  jwtRefreshSecret: cleanEnvValue(process.env.JWT_REFRESH_SECRET, DEFAULT_REFRESH_SECRET),
   encryptionSecret: cleanEnvValue(
     process.env.ENCRYPTION_SECRET,
-    "0123456789abcdef0123456789abcdef"
+    DEFAULT_ENCRYPTION_SECRET
   ),
   cookieSecure: cleanEnvValue(process.env.COOKIE_SECURE, "false") === "true",
   cookieDomain: cleanEnvValue(process.env.COOKIE_DOMAIN) || undefined,
@@ -133,5 +181,7 @@ const env = {
   puppeteerExecutablePath: cleanEnvValue(process.env.PUPPETEER_EXECUTABLE_PATH),
   trustProxy: parseTrustProxy(process.env.TRUST_PROXY)
 };
+
+validateSecrets(env);
 
 module.exports = { env };

@@ -20,6 +20,7 @@ class SettingsService {
     workspace.name = payload.name;
     workspace.slug = payload.slug;
     workspace.description = payload.description || "";
+    workspace.timezone = payload.timezone || "UTC";
     workspace.branding = {
       companyName: payload.branding?.companyName || "",
       companyTagline: payload.branding?.companyTagline || "",
@@ -28,6 +29,10 @@ class SettingsService {
     workspace.notifications = {
       alertChannel: payload.notifications?.alertChannel || "email",
       digestWindow: payload.notifications?.digestWindow || "monday-0900"
+    };
+    workspace.accessControl = {
+      defaultShareMode: payload.accessControl?.defaultShareMode || "team",
+      allowPublicLinks: payload.accessControl?.allowPublicLinks !== false
     };
 
     await workspace.save();
@@ -41,6 +46,7 @@ class SettingsService {
         name: workspace.name,
         slug: workspace.slug || "",
         description: workspace.description || "",
+        timezone: workspace.timezone || "UTC",
         ownerId: String(workspace.ownerId)
       },
       branding: {
@@ -51,6 +57,10 @@ class SettingsService {
       notifications: {
         alertChannel: workspace.notifications?.alertChannel || "email",
         digestWindow: workspace.notifications?.digestWindow || "monday-0900"
+      },
+      accessControl: {
+        defaultShareMode: workspace.accessControl?.defaultShareMode || "team",
+        allowPublicLinks: workspace.accessControl?.allowPublicLinks !== false
       }
     };
   }
